@@ -38,7 +38,30 @@ class AppContext:
             self.settings_path,
         ).load()
 
-        default_input = Path(self.settings["files"]["default_input_file"])
+        input_path = self.resolve_path(self.settings["files"]["default_input_file"])
+
+        if not input_path.exists():
+            selected_file = self.prompt_for_file(
+                title="Select Inventory Spreadsheet",
+                filetypes=[
+                    ("Excel Files", "*.xlsx *.xls"),
+                    ("All Files", "*.*"),
+                ],
+            )
+
+            if selected_file is None:
+                raise FileNotFoundError("No inventory spreadsheet was selected.")
+
+            input_path = selected_file
+
+            self.save_file_setting_if_needed(
+                key="default_input_file",
+                value=input_path,
+            )
+
+        self.state = AppState(
+            current_xls_path=input_path,
+        )
 
         if not default_input.exists():
             default_input = self.prompt_for_inventory_file()
@@ -46,7 +69,12 @@ class AppContext:
         self.input_file = Path(default_input)
 
         self.state = AppState(
-            current_xls_path=self.input_file,
+            current_xls_path=self.resolve_path(
+                self.settings["files"]["defualt_input_file"]
+            ),
+            current_ndvr_path=self.resolve_path(
+                self.settings["files"]["default_ndvr_file"]
+            ),
         )
 
         self.ui_settings = self.settings["ui"]
@@ -98,13 +126,88 @@ class AppContext:
 
         self.location_service: MainframeLocationService | None = None
 
+        ndvr_value = self.settings["files"].get(
+            "default_ndvr_file",
+            "",
+        )
+
+        if ndvr_value:
+            ndvr_path = self.resolve_path(ndvr_value)
+
+            if ndvr_path.exists():
+                self.state.current_ndvr_path = ndvr_path
+                self.load_location_file(ndvr_path)
+
     def load_location_file(
         self,
         file_path: str | Path,
     ) -> MainframeLocationService:
+        path = Path(file_path)
+
         service = MainframeLocationService()
-        service.load_file(file_path)
+        service.load_file(path)
 
         self.location_service = service
+        self.state.current_ndvr_path = path
+
+        self.save_file_setting_if_needed(
+            key="default_ndvr_file",
+            value=path,
+        )
 
         return service
+
+    def resolve_path(
+        self,
+        file_path: str | Path,
+    ) -> Path:
+        path = Path(file_path)
+
+        if path.is_absolute():
+            return path
+
+        return self.base_dir / path
+
+    def prompt_for_file(
+        self,
+        title: str,
+        filetypes: list[tuple[str, str]],
+    ) -> Path | None:
+        from tkinter import filedialog
+
+        selected = filedialog.askopenfilename(
+            title=title,
+            filetypes=filetypes,
+        )
+
+        if not selected:
+            return None
+
+        return Path(selected)
+
+    def save_file_setting_if_needed(
+        self,
+        key: str,
+        value: Path,
+    ) -> None:
+        if not self.settings.get("files", {}).get("remember_last_used_files", True):
+            return
+
+        current_value = str(
+            self.settings["files"].get(
+                key,
+                "",
+            )
+        )
+
+        new_value = str(value)
+
+        if current_value == new_value:
+            return
+
+        self.settings["files"][key] = new_value
+
+        SettingsLoader.save(
+            settings_path=self.settings_path,
+            settings=self.settings,
+        )

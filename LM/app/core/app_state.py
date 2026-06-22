@@ -43,6 +43,7 @@ class AppState:
     thread_count: int = 1
 
     current_xls_path: Path | None = None
+    current_ndvr_path: Path | None = None
 
     selected_effort_ids: set[str] = field(default_factory=set)
     inventory_effort_ids: set[str] = field(default_factory=set)

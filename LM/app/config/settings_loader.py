@@ -38,7 +38,7 @@ class SettingsLoader:
         "status_markers",
     }
 
-    REQUIRED_FILES = ("default_input_file",)
+    REQUIRED_FILES = ("default_input_file", "default_ndvr_file")
 
     REQUIRED_UI = (
         "window_title",

@@ -2,7 +2,9 @@
   "files": {
     "default_input_file": "input.xlsx",
     "default_ndvr_file": "mainframe_location.txt",
-    "default_input_folder": "."
+    "default_input_folder": ".",
+    "default_output_folder": "Output",
+    "remember_last_used_files": true
   },
 
   "reports": {
